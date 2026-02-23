@@ -1,0 +1,16 @@
+[Unit]
+Description=MCP GSC FastMCP HTTP Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/alejandro/mcp-gsc
+EnvironmentFile=/home/alejandro/mcp-gsc/.env.mcp_gsc_http
+ExecStart=/home/alejandro/mcp-gsc/.venv/bin/python /home/alejandro/mcp-gsc/gsc_server.py
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

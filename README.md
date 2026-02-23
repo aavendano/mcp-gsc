@@ -596,6 +596,55 @@ Simply ask Claude to "visualize" or "create a chart" when analyzing your data, a
 
 ---
 
+## Production HTTP Deployment (FastMCP + Caddy)
+
+This project supports production HTTP serving via FastMCP Streamable HTTP and Caddy.
+
+### 1. Server runtime (local backend)
+
+Set these environment variables for HTTP mode:
+
+```bash
+MCP_TRANSPORT=streamable-http
+FASTMCP_HOST=127.0.0.1
+FASTMCP_PORT=8011
+FASTMCP_HTTP_PATH=/
+GSC_SKIP_OAUTH=true
+GSC_CREDENTIALS_PATH=/home/alejandro/mcp-gsc/service_account_credentials.json
+```
+
+Then run:
+
+```bash
+python gsc_server.py
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8011/healthz
+```
+
+### 2. Caddy reverse proxy (public URL)
+
+To publish on `https://aadigitalbusiness.com/mcp-gsc/`:
+
+```caddy
+aadigitalbusiness.com {
+    redir /mcp-gsc /mcp-gsc/ 308
+
+    handle_path /mcp-gsc/* {
+        reverse_proxy 127.0.0.1:8011
+    }
+}
+```
+
+This maps:
+- `https://aadigitalbusiness.com/mcp-gsc/` -> MCP endpoint
+- `https://aadigitalbusiness.com/mcp-gsc/healthz` -> health endpoint
+
+---
+
 ## Troubleshooting
 
 ### Python Command Not Found

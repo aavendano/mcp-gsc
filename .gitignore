@@ -13,6 +13,7 @@ venv/
 ENV/
 env/
 
+
 # Environment and credentials
 .env
 *.env
@@ -55,3 +56,4 @@ site/
 .python-version
 .hypothesis/
 .kiro/
+oauth_script.py

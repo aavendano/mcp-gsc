@@ -1,0 +1,7 @@
+aadigitalbusiness.com {
+	redir /mcp-gsc /mcp-gsc/ 308
+
+	handle_path /mcp-gsc/* {
+		reverse_proxy 127.0.0.1:8011
+	}
+}

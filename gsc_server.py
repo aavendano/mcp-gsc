@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional
 import os
 import sys
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import google.auth
 from google.auth.transport.requests import Request
@@ -50,9 +50,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import JSONResponse
 
 # MCP
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 mcp = FastMCP("gsc-server")
 
@@ -80,6 +82,15 @@ TOKEN_FILE = os.path.join(SCRIPT_DIR, "token.json")
 SKIP_OAUTH = os.environ.get("GSC_SKIP_OAUTH", "").lower() in ("true", "1", "yes")
 
 SCOPES = ["https://www.googleapis.com/auth/webmasters"]
+
+# Runtime settings (for HTTP/server deployment)
+DEFAULT_HTTP_HOST = os.environ.get("FASTMCP_HOST", "127.0.0.1")
+DEFAULT_HTTP_PORT = os.environ.get("FASTMCP_PORT", "8011")
+DEFAULT_HTTP_PATH = (
+    os.environ.get("FASTMCP_HTTP_PATH")
+    or os.environ.get("FASTMCP_STREAMABLE_HTTP_PATH")
+    or "/"
+)
 
 def get_gsc_service():
     """
@@ -164,6 +175,20 @@ def get_gsc_service_oauth():
     
     # Build and return the service
     return build("searchconsole", "v1", credentials=creds)
+
+
+@mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
+async def health_check(_request: StarletteRequest):
+    """
+    Simple health endpoint for reverse proxy and service monitoring.
+    """
+    return JSONResponse(
+        {
+            "status": "ok",
+            "service": "mcp-gsc",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )
 
 @mcp.tool()
 async def list_properties() -> str:
@@ -1499,44 +1524,36 @@ Amin combines technical SEO knowledge with programming skills to create innovati
 """
     return creator_info
 
-if __name__ == "__main__":
+def _normalize_http_path(raw_path: str) -> str:
+    path = raw_path.strip()
+    if not path:
+        return "/"
+    if not path.startswith("/"):
+        path = "/" + path
+    return path
+
+
+def _resolve_http_port(raw_port: str) -> int:
     try:
-        # Import required modules
-        from logging_config import configure_logging
-        from config import parse_arguments, ServerConfig
-        from server import initialize_server, start_server
-        
-        # Configure logging at startup
-        logger = configure_logging()
-        
-        # Parse CLI arguments
-        args = parse_arguments()
-        
-        # Load and validate configuration
-        config = ServerConfig.from_cli_args(args)
-        config.validate()
-        
-        # Log configuration (without sensitive data)
-        logger.info(f"Server configuration: transport={config.transport}, auth_mode={config.auth_mode}")
-        if config.transport == "http":
-            logger.info(f"Network configuration: host={config.host}, port={config.port}")
-        
-        # Initialize server with configuration
-        # Note: We use the existing 'mcp' instance that has all the GSC tools registered
-        mcp_configured = initialize_server(config, mcp_instance=mcp)
-        
-        # Start server with appropriate transport
-        start_server(mcp_configured, config)
-        
-    except ValueError as e:
-        # Configuration validation errors
-        print(f"Configuration error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except KeyboardInterrupt:
-        # Graceful shutdown on Ctrl+C
-        print("\nShutting down server...")
-        sys.exit(0)
-    except Exception as e:
-        # Unexpected errors
-        print(f"Fatal error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return int(raw_port)
+    except (TypeError, ValueError):
+        return 8011
+
+
+def main() -> None:
+    transport = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
+
+    # Keep stdio as default for local MCP clients; use HTTP for production serving.
+    if transport in {"http", "streamable-http", "sse"}:
+        mcp.run(
+            transport="streamable-http" if transport == "http" else transport,
+            host=DEFAULT_HTTP_HOST,
+            port=_resolve_http_port(DEFAULT_HTTP_PORT),
+            path=_normalize_http_path(DEFAULT_HTTP_PATH),
+        )
+    else:
+        mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,4 @@
+{
+  "$schema": "https://gofastmcp.com/schemas/fastmcp.json",
+  "entrypoint": "gsc_server.py:mcp"
+}
