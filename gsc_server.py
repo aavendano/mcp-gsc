@@ -1,5 +1,45 @@
+"""
+Google Search Console MCP Server
+
+This module provides a Model Context Protocol (MCP) server for Google Search Console,
+enabling AI assistants like Claude to interact with GSC data through natural language.
+
+The server supports two transport modes:
+- STDIO: Local-only communication (original method)
+- HTTP: Network-based communication with token authentication (new)
+
+Authentication modes for HTTP transport:
+- Static Token: Simple token-based auth for development
+- JWT: Production-ready authentication with cryptographic validation
+
+All GSC tools remain unchanged regardless of transport mode, ensuring backward compatibility.
+
+Security Considerations:
+- Tokens are never logged (filtered by logging_config.py)
+- HTTPS is recommended for production HTTP transport
+- JWT validation includes issuer, audience, and signature verification
+- Static tokens should only be used in development environments
+
+Usage:
+    # STDIO mode (default, backward compatible)
+    python gsc_server.py --transport stdio
+    
+    # HTTP mode with static token
+    export MCP_ADMIN_TOKEN=your_token
+    python gsc_server.py --transport http --auth-mode static
+    
+    # HTTP mode with JWT
+    export JWT_JWKS_URI=https://...
+    export JWT_ISSUER=https://...
+    export JWT_AUDIENCE=your-audience
+    python gsc_server.py --transport http --auth-mode jwt
+
+For detailed configuration, see README.md and MIGRATION.md
+"""
+
 from typing import Any, Dict, List, Optional
 import os
+import sys
 import json
 from datetime import datetime, timedelta
 
@@ -1460,5 +1500,43 @@ Amin combines technical SEO knowledge with programming skills to create innovati
     return creator_info
 
 if __name__ == "__main__":
-    # Start the MCP server on stdio transport
-    mcp.run(transport="stdio")
+    try:
+        # Import required modules
+        from logging_config import configure_logging
+        from config import parse_arguments, ServerConfig
+        from server import initialize_server, start_server
+        
+        # Configure logging at startup
+        logger = configure_logging()
+        
+        # Parse CLI arguments
+        args = parse_arguments()
+        
+        # Load and validate configuration
+        config = ServerConfig.from_cli_args(args)
+        config.validate()
+        
+        # Log configuration (without sensitive data)
+        logger.info(f"Server configuration: transport={config.transport}, auth_mode={config.auth_mode}")
+        if config.transport == "http":
+            logger.info(f"Network configuration: host={config.host}, port={config.port}")
+        
+        # Initialize server with configuration
+        # Note: We use the existing 'mcp' instance that has all the GSC tools registered
+        mcp_configured = initialize_server(config, mcp_instance=mcp)
+        
+        # Start server with appropriate transport
+        start_server(mcp_configured, config)
+        
+    except ValueError as e:
+        # Configuration validation errors
+        print(f"Configuration error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        # Graceful shutdown on Ctrl+C
+        print("\nShutting down server...")
+        sys.exit(0)
+    except Exception as e:
+        # Unexpected errors
+        print(f"Fatal error: {e}", file=sys.stderr)
+        sys.exit(1)

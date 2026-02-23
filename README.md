@@ -56,7 +56,16 @@ Here's what you can ask Claude to do once you've set up this integration:
 
 ## Getting Started (No Coding Experience Required!)
 
-### 1. Set Up Google Search Console API Access
+### 1. Choose Your Connection Method
+
+This server supports two connection methods:
+
+1. **STDIO Transport (Local Only)** - Traditional method for local Claude Desktop connections
+2. **HTTP Transport (Network Access)** - New method enabling remote access with authentication
+
+For most users connecting Claude Desktop locally, continue with the STDIO setup below. For remote access or production deployments, see the [HTTP Transport Configuration](#http-transport-configuration) section.
+
+### 2. Set Up Google Search Console API Access
 
 Before using this tool, you'll need to create API credentials that allow Claude to access your GSC data:
 
@@ -303,6 +312,290 @@ You can also ask Claude to combine multiple tools and analyze the results. For e
 - "Identify queries where I'm ranking on page 2 (positions 11-20) that have high impressions but low CTR, then inspect the corresponding URLs and suggest title and meta description improvements."
 
 Claude will use the GSC tools to fetch the data, present it in an easy-to-understand format, create visualizations when helpful, and provide actionable insights based on the results.
+
+---
+
+## HTTP Transport Configuration
+
+The server now supports HTTP transport, enabling remote access with secure token-based authentication. This is ideal for production deployments, team access, or connecting from remote clients.
+
+### Overview
+
+HTTP transport provides:
+- Remote network access to the MCP server
+- Secure authentication with Bearer tokens
+- Two authentication modes: Static tokens (development) and JWT (production)
+- RESTful API endpoint at `/mcp`
+
+### Environment Variables
+
+Configure the server using these environment variables:
+
+| Variable | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `MCP_HOST` | string | No | `0.0.0.0` | Server bind address (use `127.0.0.1` for localhost only) |
+| `MCP_PORT` | integer | No | `8000` | Server listen port (1-65535) |
+| `MCP_TRANSPORT` | string | No | `http` | Transport mode: `http` or `stdio` |
+| `MCP_AUTH_MODE` | string | No | `static` | Authentication mode: `static` or `jwt` |
+| `MCP_ADMIN_TOKEN` | string | Yes (static) | - | Admin token for static authentication |
+| `JWT_JWKS_URI` | string | Yes (jwt) | - | JWKS endpoint URL for JWT validation |
+| `JWT_ISSUER` | string | Yes (jwt) | - | Expected JWT issuer |
+| `JWT_AUDIENCE` | string | Yes (jwt) | - | Expected JWT audience |
+| `JWT_REQUIRED_SCOPES` | string | No | - | Comma-separated required scopes for JWT |
+| `MCP_DEBUG` | string | No | `false` | Enable debug logging (`true`, `1`, or `yes`) |
+
+### Authentication Modes
+
+#### Static Token Authentication (Development)
+
+Simple token-based authentication suitable for development and testing. The server validates requests against a predefined token.
+
+**Setup:**
+
+1. Generate a secure token:
+   ```bash
+   # On Linux/Mac:
+   openssl rand -hex 32
+   
+   # Or use Python:
+   python3 -c "import secrets; print(secrets.token_hex(32))"
+   ```
+
+2. Set environment variables:
+   ```bash
+   export MCP_TRANSPORT=http
+   export MCP_AUTH_MODE=static
+   export MCP_ADMIN_TOKEN=your_generated_token_here
+   export MCP_HOST=0.0.0.0
+   export MCP_PORT=8000
+   ```
+
+3. Start the server:
+   ```bash
+   python gsc_server.py
+   ```
+
+4. Test with curl:
+   ```bash
+   curl -X POST http://localhost:8000/mcp \
+     -H "Authorization: Bearer your_generated_token_here" \
+     -H "Content-Type: application/json" \
+     -d '{"method": "tools/list"}'
+   ```
+
+**⚠️ Security Warning:** Static tokens are suitable for development only. Do not use in production environments. Always use HTTPS in production to prevent token interception.
+
+#### JWT Authentication (Production)
+
+Production-ready authentication using JSON Web Tokens with cryptographic validation. Integrates with external identity providers (Auth0, Okta, AWS Cognito, etc.).
+
+**Setup:**
+
+1. Configure your JWT provider (Auth0, Okta, etc.)
+
+2. Set environment variables:
+   ```bash
+   export MCP_TRANSPORT=http
+   export MCP_AUTH_MODE=jwt
+   export JWT_JWKS_URI=https://your-auth-provider.com/.well-known/jwks.json
+   export JWT_ISSUER=https://your-auth-provider.com/
+   export JWT_AUDIENCE=your-api-audience
+   export JWT_REQUIRED_SCOPES=read:gsc,write:gsc
+   export MCP_HOST=0.0.0.0
+   export MCP_PORT=8000
+   ```
+
+3. Start the server:
+   ```bash
+   python gsc_server.py
+   ```
+
+4. Test with a valid JWT:
+   ```bash
+   curl -X POST http://localhost:8000/mcp \
+     -H "Authorization: Bearer your_jwt_token_here" \
+     -H "Content-Type: application/json" \
+     -d '{"method": "tools/list"}'
+   ```
+
+### Command-Line Arguments
+
+Override environment variables with CLI arguments:
+
+```bash
+# Start with custom host and port
+python gsc_server.py --host 127.0.0.1 --port 9000
+
+# Start with JWT authentication
+python gsc_server.py --auth-mode jwt
+
+# Start with STDIO transport (backward compatibility)
+python gsc_server.py --transport stdio
+
+# View all options
+python gsc_server.py --help
+```
+
+**Precedence:** CLI arguments > Environment variables > Defaults
+
+### Example Configurations
+
+#### Development Setup (Local Network)
+
+```bash
+# .env file or export these
+export MCP_TRANSPORT=http
+export MCP_AUTH_MODE=static
+export MCP_ADMIN_TOKEN=dev_token_12345
+export MCP_HOST=127.0.0.1
+export MCP_PORT=8000
+
+python gsc_server.py
+```
+
+#### Production Setup (JWT with Auth0)
+
+```bash
+# .env file or export these
+export MCP_TRANSPORT=http
+export MCP_AUTH_MODE=jwt
+export JWT_JWKS_URI=https://your-domain.auth0.com/.well-known/jwks.json
+export JWT_ISSUER=https://your-domain.auth0.com/
+export JWT_AUDIENCE=https://api.your-domain.com
+export JWT_REQUIRED_SCOPES=read:gsc
+export MCP_HOST=0.0.0.0
+export MCP_PORT=8000
+
+python gsc_server.py
+```
+
+### MCP Endpoint
+
+The server exposes the MCP protocol at:
+
+```
+POST http://<host>:<port>/mcp
+```
+
+All MCP requests must include the `Authorization: Bearer <token>` header.
+
+### Security Best Practices
+
+1. **Use HTTPS in Production**
+   - Never expose HTTP servers directly to the internet
+   - Use a reverse proxy (nginx, Apache) with SSL/TLS certificates
+   - Consider using Let's Encrypt for free SSL certificates
+
+2. **Token Management**
+   - Generate strong, random tokens (minimum 32 characters)
+   - Rotate tokens regularly (every 90 days recommended)
+   - Never commit tokens to version control
+   - Use environment variables or secure secret management systems
+
+3. **Network Security**
+   - Bind to `127.0.0.1` for localhost-only access
+   - Use `0.0.0.0` only when remote access is required
+   - Configure firewall rules to restrict access
+   - Consider using VPN for remote access
+
+4. **Authentication Mode Selection**
+   - Development: Static tokens are acceptable
+   - Production: Always use JWT authentication
+   - Never use static tokens in production environments
+
+5. **Logging and Monitoring**
+   - Enable debug logging during development: `export MCP_DEBUG=true`
+   - Monitor authentication failures
+   - Review logs regularly for suspicious activity
+   - Tokens are automatically redacted from logs
+
+### Troubleshooting
+
+#### Authentication Errors
+
+**Problem:** `401 Unauthorized` response
+
+**Solutions:**
+- Verify the token is correct and matches `MCP_ADMIN_TOKEN`
+- Check that the `Authorization` header is properly formatted: `Bearer <token>`
+- For JWT: Verify the token hasn't expired
+- For JWT: Confirm JWKS URI, issuer, and audience are correct
+- Check server logs for specific error messages
+
+#### Server Binding Errors
+
+**Problem:** `Address already in use`
+
+**Solutions:**
+- Another process is using the port. Try a different port:
+  ```bash
+  python gsc_server.py --port 8001
+  ```
+- Find and stop the conflicting process:
+  ```bash
+  # Linux/Mac:
+  lsof -i :8000
+  kill <PID>
+  
+  # Windows:
+  netstat -ano | findstr :8000
+  taskkill /PID <PID> /F
+  ```
+
+**Problem:** `Permission denied`
+
+**Solutions:**
+- Ports below 1024 require root/administrator privileges
+- Use a port >= 1024 (recommended: 8000-9000)
+- Or run with elevated privileges (not recommended)
+
+#### Configuration Errors
+
+**Problem:** `MCP_ADMIN_TOKEN environment variable is required`
+
+**Solution:**
+- Set the required environment variable:
+  ```bash
+  export MCP_ADMIN_TOKEN=your_token_here
+  ```
+
+**Problem:** `JWT authentication requires JWT_JWKS_URI, JWT_ISSUER, and JWT_AUDIENCE`
+
+**Solution:**
+- Ensure all three JWT variables are set:
+  ```bash
+  export JWT_JWKS_URI=https://...
+  export JWT_ISSUER=https://...
+  export JWT_AUDIENCE=your-audience
+  ```
+
+#### Connection Errors
+
+**Problem:** Cannot connect to server
+
+**Solutions:**
+- Verify server is running: Check for startup log messages
+- Check host/port configuration: Ensure client uses correct endpoint
+- Test with curl to isolate client vs server issues
+- Check firewall rules: Ensure port is not blocked
+- For remote access: Verify `MCP_HOST=0.0.0.0` (not `127.0.0.1`)
+
+#### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+export MCP_DEBUG=true
+python gsc_server.py
+```
+
+This provides:
+- Detailed request/response logging
+- Authentication flow information
+- Configuration validation details
+- Error stack traces
+
+**Note:** Debug mode may log sensitive information. Disable in production.
 
 ---
 

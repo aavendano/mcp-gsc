@@ -1,0 +1,4 @@
+# file: /home/alejandro/mcp/mcp-gsc/config.py
+# hypothesis_version: 6.151.9
+
+[8000, 65535, ',', '--auth-mode', '--host', '--port', '--transport', '0.0.0.0', '8000', 'JWT_AUDIENCE', 'JWT_ISSUER', 'JWT_JWKS_URI', 'JWT_REQUIRED_SCOPES', 'MCP_ADMIN_TOKEN', 'MCP_AUTH_MODE', 'MCP_HOST', 'MCP_PORT', 'MCP_TRANSPORT', 'ServerConfig', 'auth_mode', 'gsc-server', 'host', 'http', 'jwt', 'port', 'static', 'stdio', 'transport']
