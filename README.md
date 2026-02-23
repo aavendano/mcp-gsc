@@ -159,19 +159,8 @@ Open your computer's Terminal (Mac) or Command Prompt (Windows):
 
 2. Create a virtual environment (this keeps the project dependencies isolated):
    ```bash
-   # Using uv (recommended):
-   uv venv .venv
-   
-   # If uv is not installed, install it first:
-   pip install uv
-   # Then create the virtual environment:
-   uv venv .venv
-
-   # OR using standard Python:
    python -m venv .venv
    ```
-
-   **Note:** If you get a "pip not found" error when trying to install uv, see the "If you get 'pip not found' error" section below.
 
 3. Activate the virtual environment:
    ```bash
@@ -184,10 +173,6 @@ Open your computer's Terminal (Mac) or Command Prompt (Windows):
 
 4. Install the required dependencies:
    ```bash
-   # Using uv:
-   uv pip install -r requirements.txt
-
-   # OR using standard pip:
    pip install -r requirements.txt
    ```
 
@@ -200,8 +185,6 @@ Open your computer's Terminal (Mac) or Command Prompt (Windows):
    # Then try installing the requirements again:
    python3 -m pip install -r requirements.txt
    
-   # Or to install uv:
-   python3 -m pip install uv
    ```
 
 When you see `(.venv)` at the beginning of your command prompt, it means the virtual environment is active and the dependencies will be installed there without affecting your system Python installation.

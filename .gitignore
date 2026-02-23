@@ -50,3 +50,8 @@ site/
 
 # Logs
 *.log
+
+
+.python-version
+.hypothesis/
+.kiro/
