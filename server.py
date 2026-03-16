@@ -152,7 +152,7 @@ def initialize_server(config: ServerConfig, mcp_instance: Optional[FastMCP] = No
                 issuer_url=HttpUrl(f'http://{safe_host}:{config.port}'),
                 resource_server_url=HttpUrl(f'http://{safe_host}:{config.port}')
             )
-            mcp_instance = FastMCP("gsc-server", token_verifier=auth_verifier, auth=auth_settings)
+            mcp_instance = FastMCP("gsc-server", token_verifier=auth_verifier, auth=auth_verifier)
             logger.info(f"Initialized server with {config.auth_mode} authentication")
         else:
             mcp_instance = FastMCP("gsc-server")
@@ -170,7 +170,7 @@ def initialize_server(config: ServerConfig, mcp_instance: Optional[FastMCP] = No
             )
             # Set both the token verifier and auth settings on the existing instance
             mcp_instance._token_verifier = auth_verifier
-            mcp_instance.settings.auth = auth_settings
+            mcp_instance.auth = auth_verifier
             logger.info(f"Configured existing server with {config.auth_mode} authentication")
         else:
             logger.info("Configured existing server without authentication (STDIO mode)")
@@ -199,21 +199,12 @@ def start_server(mcp: FastMCP, config: ServerConfig) -> None:
             logger.info("Starting server with STDIO transport")
             mcp.run(transport="stdio")
         else:
-            # HTTP transport - use uvicorn to run the ASGI app
             logger.info(f"Starting server with HTTP transport on {config.host}:{config.port}")
             logger.info(f"Authentication mode: {config.auth_mode}")
             logger.info(f"MCP endpoint available at: http://{config.host}:{config.port}/mcp")
             
-            # Get the ASGI app from FastMCP and run with uvicorn
-            import uvicorn
+            mcp.run(transport="http", host=config.host, port=config.port)
             
-            # FastMCP provides streamable_http_app for HTTP transport
-            uvicorn.run(
-                mcp.streamable_http_app,
-                host=config.host,
-                port=config.port,
-                log_level="info"
-            )
     except OSError as e:
         # Handle binding errors
         if "Address already in use" in str(e) or "address already in use" in str(e).lower():
