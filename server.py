@@ -204,12 +204,12 @@ def start_server(mcp: FastMCP, config: ServerConfig) -> None:
             logger.info(f"Authentication mode: {config.auth_mode}")
             logger.info(f"MCP endpoint available at: http://{config.host}:{config.port}/mcp")
             
-            # Get the ASGI app from FastMCP and run with uvicorn
+            # Build the ASGI app once so uvicorn tracks a concrete app object.
             import uvicorn
+            app = mcp.streamable_http_app()
             
-            # FastMCP provides streamable_http_app for HTTP transport
             uvicorn.run(
-                mcp.streamable_http_app,
+                app,
                 host=config.host,
                 port=config.port,
                 log_level="info"

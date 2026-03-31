@@ -1,4 +1,0 @@
-# file: /home/alejandro/mcp/mcp-gsc/auth.py
-# hypothesis_version: 6.151.9
-
-['JWT_AUDIENCE', 'JWT_ISSUER', 'JWT_JWKS_URI', 'admin', 'client_id', 'jwt', 'read:gsc', 'scopes', 'static', 'stdio', 'write:gsc']

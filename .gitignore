@@ -55,3 +55,6 @@ site/
 .python-version
 .hypothesis/
 .kiro/
+
+
+service_account_credentials.json

@@ -1,4 +1,0 @@
-# file: /home/alejandro/mcp/mcp-gsc/logging_config.py
-# hypothesis_version: 6.151.9
-
-['%Y-%m-%d %H:%M:%S', '1', 'Bearer [REDACTED]', 'Debug mode enabled', 'GSC_CREDENTIALS_PATH', 'JWT_AUDIENCE', 'JWT_ISSUER', 'JWT_JWKS_URI', 'MCP_ADMIN_TOKEN', 'MCP_DEBUG', '[JWT_REDACTED]', '[TOKEN_REDACTED]', 'api_key=[REDACTED]', 'gsc-server', 'true', 'yes']
