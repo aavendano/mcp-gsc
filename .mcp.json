@@ -1,12 +1,16 @@
 {
   "mcpServers": {
-    "mcp-search-console": {
-      "command": "uvx",
-      "args": ["mcp-search-console"],
+    "gsc-remote": {
+      "url": "https://your-domain.example/mcp",
+      "transport": "streamable-http"
+    },
+    "gsc-local": {
+      "command": "uv",
+      "args": ["run", "mcp-gsc"],
       "env": {
-        "GSC_CREDENTIALS_PATH": "",
-        "GSC_OAUTH_CLIENT_SECRETS_FILE": "",
-        "GSC_DATA_STATE": "all"
+        "GSC_CREDENTIALS_PATH": "/absolute/path/to/service-account.json",
+        "GSC_SKIP_OAUTH": "true",
+        "MCP_TRANSPORT": "stdio"
       }
     }
   }
